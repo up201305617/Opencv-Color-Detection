@@ -5,11 +5,13 @@ top_left_pt = (-1,-1)
 bottom_right_pt = (-1,-1)
 mouse_position = (-1,-1)
 
+# reset points of the ROI rectangle
 def resetPoints():
     global top_left_pt, bottom_right_pt
     top_left_pt = (-1,-1)
     bottom_right_pt = (-1,-1)
 
+# select a ROI with mouse
 def selectROI(event,x,y,flags,param):
 
     global top_left_pt, bottom_right_pt
@@ -30,7 +32,8 @@ def selectROI(event,x,y,flags,param):
         selecting = False
         top_left_pt = (min(x_initial, x), min(y_initial, y))
         bottom_right_pt = (max(x_initial, x), max(y_initial, y))
-        
+
+# return a string with the color name based on HSV values
 def getColor(h,s,v):
     
     if(v < 0.1):
@@ -63,7 +66,8 @@ def getColor(h,s,v):
         return "Roxo Claro"
     else:
         return "Desconhecida"
-    
+
+# calculate the RGB average of a given frame
 def frameAverage(frame):
     
     height,width,depth = frame.shape
@@ -89,6 +93,7 @@ def frameAverage(frame):
     
     return avg_R, avg_G, avg_B
 
+# convert RGB to HSV
 def rgb2hsv(r,g,b):
 
     r, g, b = r/255.0, g/255.0, b/255.0
@@ -114,6 +119,7 @@ def rgb2hsv(r,g,b):
 
     return h, s, v
 
+# calcute the color of a given ROI
 def calculateColor(roi):
 
     r,g,b = frameAverage(roi)
@@ -122,6 +128,7 @@ def calculateColor(roi):
     
     return color
 
+# main function
 def main():
 
     cap = cv.VideoCapture(0)
@@ -130,6 +137,8 @@ def main():
     cv.setMouseCallback("output",selectROI)
 
     mouse_rectangle_dimension = 10
+    window_top_left_pt = (0,0)
+    window_bottom_right_pt = (0,0)
 
     while(True):
         
@@ -164,7 +173,9 @@ def main():
         else:
             cv.rectangle(output,top_left_pt,bottom_right_pt,(0,0,255),0)
 
-        cv.rectangle(output,(mouse_position[0]-mouse_rectangle_dimension,mouse_position[1]+mouse_rectangle_dimension),(mouse_position[0]+mouse_rectangle_dimension,mouse_position[1]-mouse_rectangle_dimension),(0,0,255),2)
+        window_top_left_pt = (mouse_position[0]-mouse_rectangle_dimension,mouse_position[1]+mouse_rectangle_dimension)
+        window_bottom_right_pt = (mouse_position[0]+mouse_rectangle_dimension,mouse_position[1]-mouse_rectangle_dimension)
+        cv.rectangle(output,window_top_left_pt,window_bottom_right_pt,(0,0,255),2)
         print(mouse_position)
 
         cv.imshow("output", output)
