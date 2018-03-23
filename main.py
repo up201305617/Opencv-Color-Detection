@@ -3,6 +3,7 @@ import cv2.cv2 as cv
 
 top_left_pt = (-1,-1)
 bottom_right_pt = (-1,-1)
+mouse_position = (-1,-1)
 
 def resetPoints():
     global top_left_pt, bottom_right_pt
@@ -13,6 +14,7 @@ def selectROI(event,x,y,flags,param):
 
     global top_left_pt, bottom_right_pt
     global x_initial, y_initial
+    global mouse_position
     selecting = False 
 
     if event == cv.EVENT_LBUTTONDOWN:
@@ -20,6 +22,7 @@ def selectROI(event,x,y,flags,param):
         y_initial = y
         selecting = True
     elif event == cv.EVENT_MOUSEMOVE:
+        mouse_position = (x,y)
         if selecting:
             top_left_pt = (min(x_initial, x), min(y_initial, y))
             bottom_right_pt = (max(x_initial, x), max(y_initial, y))
@@ -126,6 +129,8 @@ def main():
     cv.namedWindow('output') 
     cv.setMouseCallback("output",selectROI)
 
+    mouse_rectangle_dimension = 10
+
     while(True):
         
         ret, frame = cap.read()
@@ -158,6 +163,9 @@ def main():
             #cv.imshow("ROI", mouseROI)
         else:
             cv.rectangle(output,top_left_pt,bottom_right_pt,(0,0,255),0)
+
+        cv.rectangle(output,(mouse_position[0]-mouse_rectangle_dimension,mouse_position[1]+mouse_rectangle_dimension),(mouse_position[0]+mouse_rectangle_dimension,mouse_position[1]-mouse_rectangle_dimension),(0,0,255),2)
+        print(mouse_position)
 
         cv.imshow("output", output)
 
