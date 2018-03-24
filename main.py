@@ -5,6 +5,9 @@ top_left_pt = (-1,-1)
 bottom_right_pt = (-1,-1)
 mouse_position = (-1,-1)
 
+def nothing(x):
+  pass
+
 # reset points of the ROI rectangle
 def resetPoints():
     global top_left_pt, bottom_right_pt
@@ -70,12 +73,11 @@ def getColor(h,s,v):
 # calculate the RGB average of a given frame
 def frameAverage(frame):
     
-    height,width,depth = frame.shape
+    height,width,_ = frame.shape
     avg_R=0
     avg_G=0
     avg_B=0
     count = 0
-    depth = depth + 1
 
     for i in range(height):
         for j in range(width):
@@ -131,12 +133,17 @@ def calculateColor(roi):
 # main function
 def main():
 
+    window_name = "Webcam"
+    trackbar_name = "Size"
+
     cap = cv.VideoCapture(0)
 
-    cv.namedWindow('output') 
-    cv.setMouseCallback("output",selectROI)
+    cv.namedWindow(window_name) 
 
-    mouse_rectangle_dimension = 10
+    cv.setMouseCallback(window_name,selectROI)
+
+    cv.createTrackbar(trackbar_name,window_name,10,50,nothing)
+
     window_top_left_pt = (0,0)
     window_bottom_right_pt = (0,0)
 
@@ -151,6 +158,9 @@ def main():
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         circles = cv.HoughCircles(gray,cv.HOUGH_GRADIENT,1.5,50, param1=100,param2=100,minRadius=15,maxRadius=150)
     
+        size = cv.getTrackbarPos(trackbar_name,window_name)
+        mouse_rectangle_dimension = size
+
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
             for (x, y, r) in circles:
@@ -158,7 +168,6 @@ def main():
                 cv.rectangle(output, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
                 roi_rectangle = frame[y-half_r:y+half_r,x-half_r:x+half_r]
                 rgb_r, rgb_g, rgb_b = frameAverage(roi_rectangle)
-                #cv.imshow("ROI",roi_rectangle)
                 h,s,v = rgb2hsv(rgb_r,rgb_g,rgb_b)
                 color = getColor(h,s,v)
                 cv.circle(output, (x, y), r, (int(rgb_b), int(rgb_g), int(rgb_r)), -1)
@@ -169,22 +178,31 @@ def main():
             mouseROI = frame[top_left_pt[1]:bottom_right_pt[1],top_left_pt[0]:bottom_right_pt[0]]
             m_color = calculateColor(mouseROI)
             cv.putText(output,m_color,(top_left_pt[0],top_left_pt[1]-5),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
-            #cv.imshow("ROI", mouseROI)
         else:
             cv.rectangle(output,top_left_pt,bottom_right_pt,(0,0,255),0)
 
         window_top_left_pt = (mouse_position[0]-mouse_rectangle_dimension,mouse_position[1]+mouse_rectangle_dimension)
         window_bottom_right_pt = (mouse_position[0]+mouse_rectangle_dimension,mouse_position[1]-mouse_rectangle_dimension)
-        cv.rectangle(output,window_top_left_pt,window_bottom_right_pt,(0,0,255),2)
-        print(mouse_position)
+        
+        windowROI = output[window_bottom_right_pt[1]:window_top_left_pt[1],window_top_left_pt[0]:window_bottom_right_pt[0]]
+        
+        height,width,_ = windowROI.shape
+        if height > 0 and width > 0:
+            cv.imshow("W",windowROI)
+        
+        cv.rectangle(output,window_top_left_pt,window_bottom_right_pt,(0,0,255),1)
+        
+        window_color = calculateColor(windowROI)
+        cv.putText(output,window_color,(window_top_left_pt[0],window_top_left_pt[1]+25),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
+        
+        cv.imshow(window_name, output)
 
-        cv.imshow("output", output)
+        k = cv.waitKey(1) & 0xFF
 
-        if cv.waitKey(1) & 0xFF == ord('q'):
+        if k == ord('q'):
             break
 
-        key = cv.waitKey(1)
-        if key == ord('c'):
+        if k == ord('c'):
             resetPoints()
 
     cap.release()
