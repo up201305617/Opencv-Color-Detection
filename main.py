@@ -155,23 +155,9 @@ def main():
             break
 
         output = frame
-        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        circles = cv.HoughCircles(gray,cv.HOUGH_GRADIENT,1.5,50, param1=100,param2=100,minRadius=15,maxRadius=150)
     
         size = cv.getTrackbarPos(trackbar_name,window_name)
         mouse_rectangle_dimension = size
-
-        if circles is not None:
-            circles = np.round(circles[0, :]).astype("int")
-            for (x, y, r) in circles:
-                half_r = int(r/2)
-                cv.rectangle(output, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
-                roi_rectangle = frame[y-half_r:y+half_r,x-half_r:x+half_r]
-                rgb_r, rgb_g, rgb_b = frameAverage(roi_rectangle)
-                h,s,v = rgb2hsv(rgb_r,rgb_g,rgb_b)
-                color = getColor(h,s,v)
-                cv.circle(output, (x, y), r, (int(rgb_b), int(rgb_g), int(rgb_r)), -1)
-                cv.putText(output,color,(x+5,y+5),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
         
         if top_left_pt[0] != -1 or bottom_right_pt[0] != -1:
             cv.rectangle(output,(top_left_pt[0]-1,top_left_pt[1]-1),(bottom_right_pt[0]+1,bottom_right_pt[1]+1),(0,0,255),1)
