@@ -1,40 +1,25 @@
 import numpy as np
 import cv2.cv2 as cv
 
-top_left_pt = (-1,-1)
-bottom_right_pt = (-1,-1)
 mouse_position = (-1,-1)
+selecting = False
 
+# default function for createTrackbar
 def nothing(x):
   pass
-
-# reset points of the ROI rectangle
-def resetPoints():
-    global top_left_pt, bottom_right_pt
-    top_left_pt = (-1,-1)
-    bottom_right_pt = (-1,-1)
 
 # select a ROI with mouse
 def selectROI(event,x,y,flags,param):
 
-    global top_left_pt, bottom_right_pt
-    global x_initial, y_initial
     global mouse_position
-    selecting = False 
+    global selecting
 
     if event == cv.EVENT_LBUTTONDOWN:
-        x_initial = x
-        y_initial = y
         selecting = True
     elif event == cv.EVENT_MOUSEMOVE:
         mouse_position = (x,y)
-        if selecting:
-            top_left_pt = (min(x_initial, x), min(y_initial, y))
-            bottom_right_pt = (max(x_initial, x), max(y_initial, y))
     elif event == cv.EVENT_LBUTTONUP:
         selecting = False
-        top_left_pt = (min(x_initial, x), min(y_initial, y))
-        bottom_right_pt = (max(x_initial, x), max(y_initial, y))
 
 # return a string with the color name based on HSV values
 def getColor(h,s,v):
@@ -90,8 +75,6 @@ def frameAverage(frame):
         avg_R = avg_R / count
         avg_G = avg_G / count
         avg_B = avg_B / count
-    else:
-        resetPoints()
     
     return avg_R, avg_G, avg_B
 
@@ -158,14 +141,6 @@ def main():
     
         size = cv.getTrackbarPos(trackbar_name,window_name)
         mouse_rectangle_dimension = size
-        
-        if top_left_pt[0] != -1 or bottom_right_pt[0] != -1:
-            cv.rectangle(output,(top_left_pt[0]-1,top_left_pt[1]-1),(bottom_right_pt[0]+1,bottom_right_pt[1]+1),(0,0,255),1)
-            mouseROI = frame[top_left_pt[1]:bottom_right_pt[1],top_left_pt[0]:bottom_right_pt[0]]
-            m_color = calculateColor(mouseROI)
-            cv.putText(output,m_color,(top_left_pt[0],top_left_pt[1]-5),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
-        else:
-            cv.rectangle(output,top_left_pt,bottom_right_pt,(0,0,255),0)
 
         window_top_left_pt = (mouse_position[0]-mouse_rectangle_dimension,mouse_position[1]+mouse_rectangle_dimension)
         window_bottom_right_pt = (mouse_position[0]+mouse_rectangle_dimension,mouse_position[1]-mouse_rectangle_dimension)
@@ -178,8 +153,9 @@ def main():
         
         cv.rectangle(output,window_top_left_pt,window_bottom_right_pt,(0,0,255),1)
         
-        window_color = calculateColor(cursorROI)
-        cv.putText(output,window_color,(window_top_left_pt[0],window_top_left_pt[1]+25),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
+        if selecting:
+            window_color = calculateColor(cursorROI)
+            cv.putText(output,window_color,(window_top_left_pt[0],window_top_left_pt[1]+25),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
         
         cv.imshow(window_name, output)
 
@@ -187,9 +163,6 @@ def main():
 
         if k == ord('q'):
             break
-
-        if k == ord('c'):
-            resetPoints()
 
     cap.release()
     cv.destroyAllWindows()
