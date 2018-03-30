@@ -170,15 +170,15 @@ def main():
         window_top_left_pt = (mouse_position[0]-mouse_rectangle_dimension,mouse_position[1]+mouse_rectangle_dimension)
         window_bottom_right_pt = (mouse_position[0]+mouse_rectangle_dimension,mouse_position[1]-mouse_rectangle_dimension)
         
-        windowROI = output[window_bottom_right_pt[1]:window_top_left_pt[1],window_top_left_pt[0]:window_bottom_right_pt[0]]
+        cursorROI = output[window_bottom_right_pt[1]:window_top_left_pt[1],window_top_left_pt[0]:window_bottom_right_pt[0]]
         
-        height,width,_ = windowROI.shape
+        height,width,_ = cursorROI.shape
         if height > 0 and width > 0:
-            cv.imshow("W",windowROI)
+            cv.imshow("Cursor ROI",cursorROI)
         
         cv.rectangle(output,window_top_left_pt,window_bottom_right_pt,(0,0,255),1)
         
-        window_color = calculateColor(windowROI)
+        window_color = calculateColor(cursorROI)
         cv.putText(output,window_color,(window_top_left_pt[0],window_top_left_pt[1]+25),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
         
         cv.imshow(window_name, output)
