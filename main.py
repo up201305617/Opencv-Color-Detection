@@ -1,8 +1,13 @@
 import numpy as np
 import cv2.cv2 as cv
+import os
+import wx
 
 mouse_position = (-1,-1)
 selecting = False
+
+wildcard = "All files (*.*)|*.*"
+openFile = ""
 
 # default function for createTrackbar
 def nothing(x):
@@ -28,7 +33,7 @@ def getColor(h,s,v):
          return "Preto"
     elif (s < 0.15 and v > 0.65):
         return "Branco"
-    elif (s< 0.15 and (0.1<v and v<0.65)):
+    elif (s< 0.20 and (0.1<v and v<0.65)):
         return "Cinzento"
     elif ((h<11 or h>351) and s > 0.7 and v>0.3):
         return "Vermelho"
@@ -109,12 +114,58 @@ def calculateColor(roi):
 
     r,g,b = frameAverage(roi)
     h,s,v = rgb2hsv(r,g,b)
+    print(h,s,v)
     color = getColor(h,s,v)
     
     return color
 
+global analyseImage
+def analyseImage(pathToImage):
+    
+    window_name = "Image"
+    trackbar_name = "Size"
+    
+    img = cv.imread(pathToImage,cv.IMREAD_COLOR)
+    clone = img.copy()
+    cv.namedWindow(window_name) 
+
+    cv.setMouseCallback(window_name,selectROI)
+
+    cv.createTrackbar(trackbar_name,window_name,10,50,nothing)
+
+    window_top_left_pt = (0,0)
+    window_bottom_right_pt = (0,0)
+    
+    while(True): 
+
+        img = clone.copy()
+        
+        size = cv.getTrackbarPos(trackbar_name,window_name)
+        mouse_rectangle_dimension = size
+
+        window_top_left_pt = (mouse_position[0]-mouse_rectangle_dimension,mouse_position[1]+mouse_rectangle_dimension)
+        window_bottom_right_pt = (mouse_position[0]+mouse_rectangle_dimension,mouse_position[1]-mouse_rectangle_dimension)
+
+        cursorROI = img[window_bottom_right_pt[1]:window_top_left_pt[1],window_top_left_pt[0]:window_bottom_right_pt[0]]
+        
+        cv.rectangle(img,window_top_left_pt,window_bottom_right_pt,(0,0,255),1)
+
+        if selecting:
+            window_color = calculateColor(cursorROI)
+            cv.putText(img,window_color,(window_top_left_pt[0],window_top_left_pt[1]+25),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
+
+        cv.imshow(window_name,img)
+
+        key = cv.waitKey(1) & 0xFF
+        
+        if key == ord("q"):
+            break
+    
+    cv.destroyAllWindows()
+
 # main function
-def main():
+global analyseVideoStream
+def analyseVideoStream(mode, pathToFile):
 
     window_name = "Webcam"
     trackbar_name = "Size"
@@ -167,5 +218,58 @@ def main():
     cap.release()
     cv.destroyAllWindows()
 
+#pylint: disable=E1101
+class Menu(wx.Frame):
+
+    def __init__(self):
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Color Detector")
+        panel = wx.Panel(self, wx.ID_ANY)
+        self.currentDirectory = os.getcwd()
+        openImageDlgBtn = wx.Button(panel, label="Open Image File")
+        openImageDlgBtn.Bind(wx.EVT_BUTTON, self.onOpenFile)
+
+        openVideoDlgBtn = wx.Button(panel, label="Open Video File")
+        openVideoDlgBtn.Bind(wx.EVT_BUTTON, self.onOpenFile)
+
+        openCameraDlgBtn = wx.Button(panel, label="Open Camera")
+        openCameraDlgBtn.Bind(wx.EVT_BUTTON, self.onOpenCamera)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(openImageDlgBtn, 0, wx.ALL|wx.CENTER, 5)
+        sizer.Add(openVideoDlgBtn, 0, wx.ALL|wx.CENTER, 5)
+        sizer.Add(openCameraDlgBtn, 0, wx.ALL|wx.CENTER, 5)
+        panel.SetSizer(sizer)
+
+    def onOpenFile(self, event):
+ 
+        global openFile
+
+        dlg = wx.FileDialog(
+            self, message="Choose a file",
+            defaultDir=self.currentDirectory, 
+            defaultFile="",
+            wildcard=wildcard,
+            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_CHANGE_DIR
+            )
+
+        if dlg.ShowModal() == wx.ID_OK:
+            paths = dlg.GetPaths()
+            #print ("You chose the following file(s):")
+            for path in paths:
+                #print (path)
+                openFile=path
+                analyseImage(openFile)
+
+        dlg.Destroy()
+    
+    def onOpenCamera(self, event):
+       #main()
+       return ""
+
 if __name__ == "__main__":
-    main()
+    #main()
+    app = wx.App(False)
+    frame = Menu()
+    frame.Show()
+    app.MainLoop()
+    print(openFile)
