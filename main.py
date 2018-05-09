@@ -6,7 +6,8 @@ import wx
 mouse_position = (-1,-1)
 selecting = False
 
-wildcard = "All files (*.*)|*.*"
+wildcard = "Pictures (*.jpeg,*.png,*.jpg)|*.jpeg;*.png;*.jpg"
+wildcardVideo = "Videos (*.avi,*.mp4,*.mkv)|*.avi;*.mp4;*.mkv"
 openFile = ""
 
 # default function for createTrackbar
@@ -114,11 +115,11 @@ def calculateColor(roi):
 
     r,g,b = frameAverage(roi)
     h,s,v = rgb2hsv(r,g,b)
-    print(h,s,v)
     color = getColor(h,s,v)
     
     return color
 
+# analyse a image file
 global analyseImage
 def analyseImage(pathToImage):
     
@@ -152,7 +153,22 @@ def analyseImage(pathToImage):
 
         if selecting:
             window_color = calculateColor(cursorROI)
-            cv.putText(img,window_color,(window_top_left_pt[0],window_top_left_pt[1]+25),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
+            height_o,width_o,_ = img.shape
+            
+            x_pos = 0
+            y_pos = 0
+            
+            if window_bottom_right_pt[1]+25 < height_o*0.8:
+                y_pos = window_top_left_pt[1]+25
+            else:
+                y_pos = window_top_left_pt[1]-25-size
+            
+            if window_bottom_right_pt[0] + 25 <width_o*0.9:
+                x_pos = window_top_left_pt[0]
+            else:
+                x_pos = window_top_left_pt[0] - 100
+
+            cv.putText(img,window_color,(x_pos,y_pos),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
 
         cv.imshow(window_name,img)
 
@@ -163,14 +179,20 @@ def analyseImage(pathToImage):
     
     cv.destroyAllWindows()
 
-# main function
+# analyse video or camera
 global analyseVideoStream
 def analyseVideoStream(mode, pathToFile):
 
-    window_name = "Webcam"
-    trackbar_name = "Size"
+    window_name = ""
+    cap = ""
+    if mode == 1:
+        window_name = "Webcam"
+        cap = cv.VideoCapture(0)
+    elif mode == 2: 
+        window_name = "Video"
+        cap = cv.VideoCapture(pathToFile)
 
-    cap = cv.VideoCapture(0)
+    trackbar_name = "Size"
 
     cv.namedWindow(window_name) 
 
@@ -206,8 +228,23 @@ def analyseVideoStream(mode, pathToFile):
         
         if selecting:
             window_color = calculateColor(cursorROI)
-            cv.putText(output,window_color,(window_top_left_pt[0],window_top_left_pt[1]+25),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
-        
+            height_o,width_o,_ = output.shape
+            
+            x_pos = 0
+            y_pos = 0
+            
+            if window_bottom_right_pt[1]+25 < height_o*0.8:
+                y_pos = window_top_left_pt[1]+25
+            else:
+                y_pos = window_top_left_pt[1]-25-size
+            
+            if window_bottom_right_pt[0] + 25 <width_o*0.9:
+                x_pos = window_top_left_pt[0]
+            else:
+                x_pos = window_top_left_pt[0] - 100
+
+            cv.putText(output,window_color,(x_pos,y_pos),cv.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
+
         cv.imshow(window_name, output)
 
         k = cv.waitKey(1) & 0xFF
@@ -225,19 +262,44 @@ class Menu(wx.Frame):
         wx.Frame.__init__(self, None, wx.ID_ANY, "Color Detector")
         panel = wx.Panel(self, wx.ID_ANY)
         self.currentDirectory = os.getcwd()
+        
         openImageDlgBtn = wx.Button(panel, label="Open Image File")
         openImageDlgBtn.Bind(wx.EVT_BUTTON, self.onOpenFile)
 
         openVideoDlgBtn = wx.Button(panel, label="Open Video File")
-        openVideoDlgBtn.Bind(wx.EVT_BUTTON, self.onOpenFile)
+        openVideoDlgBtn.Bind(wx.EVT_BUTTON, self.onOpenVideo)
 
-        openCameraDlgBtn = wx.Button(panel, label="Open Camera")
+        openCameraDlgBtn = wx.Button(panel, label="  Open Camera  ")
         openCameraDlgBtn.Bind(wx.EVT_BUTTON, self.onOpenCamera)
 
+        lbl = wx.StaticText(panel,-1,style = wx.ALIGN_CENTER)
+        txt = "\nOpenCV Color Detection\n"
+        font = wx.Font(18, wx.ROMAN, wx.ITALIC, wx.NORMAL) 
+        lbl.SetFont(font) 
+        lbl.SetLabel(txt)
+
+        lbl1 = wx.StaticText(panel,-1,style = wx.ALIGN_CENTER)
+        txt2 = "\n\nMNSE, FEUP\n"+"2018"
+        lbl1.SetFont(font) 
+        lbl1.SetLabel(txt2)
+
+        lbl2 = wx.StaticText(panel,-1,style = wx.ALIGN_CENTER)
+        txt3 = "\n"
+        lbl2.SetFont(font) 
+        lbl2.SetLabel(txt3)
+
+        img = wx.Image("logo.png")
+        img = img.Scale(320,87,wx.IMAGE_QUALITY_HIGH)
+        image = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(img))
+
         sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(lbl,0,wx.ALIGN_CENTER) 
+        sizer.Add(image,0,wx.ALIGN_CENTER)
+        sizer.Add(lbl2,0,wx.ALIGN_CENTER) 
         sizer.Add(openImageDlgBtn, 0, wx.ALL|wx.CENTER, 5)
         sizer.Add(openVideoDlgBtn, 0, wx.ALL|wx.CENTER, 5)
         sizer.Add(openCameraDlgBtn, 0, wx.ALL|wx.CENTER, 5)
+        sizer.Add(lbl1,0,wx.ALIGN_CENTER)
         panel.SetSizer(sizer)
 
     def onOpenFile(self, event):
@@ -249,22 +311,39 @@ class Menu(wx.Frame):
             defaultDir=self.currentDirectory, 
             defaultFile="",
             wildcard=wildcard,
-            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_CHANGE_DIR
+            style=wx.FD_OPEN | wx.FD_CHANGE_DIR
             )
 
         if dlg.ShowModal() == wx.ID_OK:
             paths = dlg.GetPaths()
-            #print ("You chose the following file(s):")
             for path in paths:
-                #print (path)
                 openFile=path
                 analyseImage(openFile)
 
         dlg.Destroy()
-    
-    def onOpenCamera(self, event):
-       #main()
-       return ""
+
+    def onOpenVideo(self, event):
+ 
+        global openFile
+
+        dlg = wx.FileDialog(
+            self, message="Choose a file",
+            defaultDir=self.currentDirectory, 
+            defaultFile="",
+            wildcard=wildcardVideo,
+            style=wx.FD_OPEN | wx.FD_CHANGE_DIR
+            )
+
+        if dlg.ShowModal() == wx.ID_OK:
+            paths = dlg.GetPaths()
+            for path in paths:
+                openFile=path
+                analyseVideoStream(2,openFile)
+
+        dlg.Destroy()
+
+    def onOpenCamera(self,event):
+        analyseVideoStream(1,"")
 
 if __name__ == "__main__":
     #main()
@@ -272,4 +351,3 @@ if __name__ == "__main__":
     frame = Menu()
     frame.Show()
     app.MainLoop()
-    print(openFile)
